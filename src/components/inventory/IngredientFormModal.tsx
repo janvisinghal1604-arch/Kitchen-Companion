@@ -183,8 +183,9 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
               min="0.1"
               required
               value={quantity}
+              placeholder="e.g. 1"
               onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             />
           </div>
           <div>
@@ -192,7 +193,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
             <select
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             >
               {COMMON_UNITS.map((u) => (
                 <option key={u} value={u}>
@@ -204,7 +205,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
         </div>
 
         {/* Category & Storage Location */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-sage-700" />
@@ -213,7 +214,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
             <select
               value={category}
               onChange={(e) => handleCategoryChange(e.target.value as IngredientCategory)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             >
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -231,7 +232,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
             <select
               value={storageLocation}
               onChange={(e) => setStorageLocation(e.target.value as StorageLocation)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             >
               {STORAGE_LOCATIONS.map((loc) => (
                 <option key={loc} value={loc}>
@@ -243,7 +244,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
         </div>
 
         {/* Purchase Date & Estimated Use-By Date */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-ink-secondary" />
@@ -253,7 +254,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
               type="date"
               value={purchaseDate}
               onChange={(e) => setPurchaseDate(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             />
           </div>
 
@@ -267,7 +268,7 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
               required
               value={estimatedUseBy}
               onChange={(e) => setEstimatedUseBy(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
             />
           </div>
         </div>

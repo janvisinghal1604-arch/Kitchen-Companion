@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKitchen } from '../context/KitchenContext';
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 import { KitchenItem, IngredientCategory, StorageLocation } from '../types';
 import {
   Clock,
@@ -15,7 +16,11 @@ import {
   Heart,
   Users,
   Flame,
-  ShieldCheck
+  ShieldCheck,
+  Mail,
+  Lock,
+  User,
+  AlertTriangle
 } from 'lucide-react';
 
 interface QuickStarterIngredient {
@@ -134,18 +139,27 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { userProfile, completeOnboarding } = useKitchen();
+  const { userProfile, completeOnboarding, showToast, updateUserProfile } = useKitchen();
 
   // Natural linear progression:
   // 1. Splash Screen: Introduce the app
-  // 2. Onboarding Screens: Introduce key features
-  // 3. Personalised screens: Collect optional dietary and meal preferences
-  // 4. Kitchen Setup Screen: Guide users to begin adding ingredients
-  const [currentStep, setCurrentStep] = useState<'splash' | 'features' | 'personalize' | 'setup'>('splash');
+  // 2. Auth Screen: Login or Sign Up (Optional with 1-click Skip)
+  // 3. Onboarding Screens: Introduce key features
+  // 4. Personalised screens: Collect optional dietary and meal preferences
+  // 5. Kitchen Setup Screen: Guide users to begin adding ingredients
+  const [currentStep, setCurrentStep] = useState<'splash' | 'auth' | 'features' | 'personalize' | 'setup'>('splash');
   const [featureIndex, setFeatureIndex] = useState(0);
 
-  // Personalization state
-  const [fullName, setFullName] = useState(userProfile.full_name || 'Aditi Rao');
+  // Auth state
+  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
+  const [authFullName, setAuthFullName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // Personalization state (starts empty so placeholder shows)
+  const [fullName, setFullName] = useState(userProfile.full_name || '');
   const [dietary, setDietary] = useState(userProfile.dietary_preference || 'Vegetarian');
   const [householdSize, setHouseholdSize] = useState(userProfile.household_size || 2);
   const [cookingLevel, setCookingLevel] = useState(userProfile.cooking_level || 'Home Cook');
@@ -158,6 +172,58 @@ export const OnboardingPage: React.FC = () => {
   // Kitchen setup state
   const [starterList, setStarterList] = useState<QuickStarterIngredient[]>(STARTER_INGREDIENTS);
   const [isFinishing, setIsFinishing] = useState(false);
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsAuthLoading(true);
+
+    const supabase = getSupabase();
+    try {
+      if (isSupabaseConfigured() && supabase) {
+        if (authMode === 'signup') {
+          const { error } = await supabase.auth.signUp({
+            email: authEmail.trim(),
+            password: authPassword,
+            options: {
+              data: { full_name: authFullName.trim() }
+            }
+          });
+          if (error) throw error;
+          if (authFullName.trim()) {
+            setFullName(authFullName.trim());
+            updateUserProfile({ full_name: authFullName.trim(), email: authEmail.trim() });
+          }
+          showToast('Account created! Welcome to Kitchen Companion.', 'success');
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: authEmail.trim(),
+            password: authPassword
+          });
+          if (error) throw error;
+          const userMeta = data.user?.user_metadata;
+          if (userMeta?.full_name) {
+            setFullName(userMeta.full_name);
+            updateUserProfile({ full_name: userMeta.full_name, email: authEmail.trim() });
+          }
+          showToast('Welcome back to Kitchen Companion!', 'success');
+        }
+      } else {
+        if (authFullName.trim()) setFullName(authFullName.trim());
+        updateUserProfile({
+          full_name: authFullName.trim() || 'Mindful Chef',
+          email: authEmail.trim() || 'guest@kitchencompanion.app'
+        });
+        showToast('Signed in successfully (Offline-First Session)', 'info');
+      }
+
+      setCurrentStep('features');
+    } catch (err: any) {
+      setAuthError(err.message || 'Authentication failed. Please verify credentials.');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
 
   const features = [
     {
@@ -303,6 +369,8 @@ export const OnboardingPage: React.FC = () => {
         <div className="flex items-center gap-3">
           {currentStep !== 'splash' && (
             <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-ink-secondary mr-2">
+              <span className={currentStep === 'auth' ? 'text-sage-800 font-bold' : ''}>Account</span>
+              <span>•</span>
               <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
               <span>•</span>
               <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
@@ -357,12 +425,158 @@ export const OnboardingPage: React.FC = () => {
 
             <div className="pt-4 flex flex-col items-center justify-center gap-3">
               <button
-                onClick={() => setCurrentStep('features')}
+                onClick={() => setCurrentStep('auth')}
                 className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-sage-800 hover:bg-sage-700 text-white font-medium text-sm transition shadow-elevated flex items-center justify-center gap-2 group"
               >
                 <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
+
+              <button
+                onClick={() => setCurrentStep('features')}
+                className="text-xs text-ink-secondary hover:text-ink-primary font-medium underline underline-offset-4"
+              >
+                Continue without account (Skip Login)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* SCREEN 2: LOGIN / SIGNUP WITH SKIP (Cloud Account)        */}
+        {/* ========================================================= */}
+        {currentStep === 'auth' && (
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-cream-300 shadow-card animate-in fade-in duration-300 space-y-6 max-w-lg mx-auto">
+            <div className="text-center space-y-2">
+              <span className="inline-block px-3 py-1 rounded-full bg-sage-100 text-sage-800 text-xs font-semibold uppercase tracking-wider">
+                Cloud Sync (Optional)
+              </span>
+              <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal">
+                {authMode === 'login' ? 'Welcome Back' : 'Create Your Kitchen Account'}
+              </h2>
+              <p className="text-xs sm:text-sm text-ink-secondary">
+                {authMode === 'login'
+                  ? 'Sign in to access your kitchen inventory and recipes across all devices.'
+                  : 'Sync your inventory securely to Supabase. You can also skip and stay offline.'}
+              </p>
+            </div>
+
+            {/* Mode Switcher Tabs */}
+            <div className="flex border-b border-cream-200 text-xs sm:text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signup');
+                  setAuthError('');
+                }}
+                className={`flex-1 py-2.5 font-medium border-b-2 text-center transition ${
+                  authMode === 'signup'
+                    ? 'border-sage-800 text-sage-900 font-semibold'
+                    : 'border-transparent text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                Create Account
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthError('');
+                }}
+                className={`flex-1 py-2.5 font-medium border-b-2 text-center transition ${
+                  authMode === 'login'
+                    ? 'border-sage-800 text-sage-900 font-semibold'
+                    : 'border-transparent text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                Sign In
+              </button>
+            </div>
+
+            {authError && (
+              <div className="p-3 rounded-xl bg-tomato-50 border border-tomato-200 text-tomato-800 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-tomato-600" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAuthSubmit} className="space-y-4 text-xs sm:text-sm">
+              {authMode === 'signup' && (
+                <div>
+                  <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-sage-700" />
+                    Your Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={authFullName}
+                    onChange={(e) => setAuthFullName(e.target.value)}
+                    placeholder="e.g. Alex Morgan or Aditi Rao"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-sage-700" />
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="e.g. name@example.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-sage-700" />
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={6}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isAuthLoading}
+                className="w-full py-3 rounded-xl bg-sage-800 hover:bg-sage-700 text-white font-medium text-sm transition shadow-soft flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isAuthLoading ? (
+                  <span>Connecting to Supabase...</span>
+                ) : (
+                  <>
+                    <span>{authMode === 'login' ? 'Sign In to Kitchen' : 'Create Free Account'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="pt-2 border-t border-cream-200 text-center space-y-2">
+              <button
+                type="button"
+                onClick={() => setCurrentStep('features')}
+                className="w-full py-2.5 px-4 rounded-xl border border-ink-border hover:bg-cream-100 text-xs sm:text-sm font-medium text-ink-primary transition flex items-center justify-center gap-2"
+              >
+                <span>Continue without account (Skip)</span>
+                <ArrowRight className="w-4 h-4 text-ink-secondary" />
+              </button>
+              <p className="text-[11px] text-ink-secondary">
+                You can link your Supabase account anytime in Profile & Settings.
+              </p>
             </div>
           </div>
         )}
@@ -414,7 +628,7 @@ export const OnboardingPage: React.FC = () => {
                     <button
                       onClick={() => {
                         if (featureIndex > 0) setFeatureIndex(featureIndex - 1);
-                        else setCurrentStep('splash');
+                        else setCurrentStep('auth');
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary hover:bg-cream-100 transition"
                     >

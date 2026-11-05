@@ -62,10 +62,10 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'dietary' | 'notifications' | 'app'>('profile');
 
   // --- 1. USER PROFILE STATE ---
-  const [fullName, setFullName] = useState(userProfile.full_name || 'Aditi Rao');
-  const [email, setEmail] = useState(userProfile.email || 'aditi.rao@example.com');
-  const [phone, setPhone] = useState(userProfile.phone || '+91 98765 43210');
-  const [city, setCity] = useState(userProfile.city || 'Bengaluru, India');
+  const [fullName, setFullName] = useState(userProfile.full_name || '');
+  const [email, setEmail] = useState(userProfile.email || '');
+  const [phone, setPhone] = useState(userProfile.phone || '');
+  const [city, setCity] = useState(userProfile.city || '');
   const [avatarUrl, setAvatarUrl] = useState(userProfile.avatar_url || AVATAR_PRESETS[0]);
   const [householdSize, setHouseholdSize] = useState(userProfile.household_size || 2);
   const [cookingLevel, setCookingLevel] = useState(userProfile.cooking_level || 'Home Cook');
@@ -444,6 +444,7 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Alex Morgan or Aditi Rao"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
                 />
               </div>
@@ -458,6 +459,7 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. name@example.com"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
                 />
               </div>
@@ -471,6 +473,7 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98765 43210"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
                 />
               </div>

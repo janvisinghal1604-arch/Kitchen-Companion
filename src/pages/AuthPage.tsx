@@ -80,7 +80,19 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-cream-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Top Right Skip */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-8">
+        <button
+          onClick={handleGuestExplore}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-ink-secondary hover:text-ink-primary bg-white/80 hover:bg-white border border-ink-border/60 transition shadow-soft group"
+          title="Skip login and explore as guest"
+        >
+          <span>Skip</span>
+          <ArrowRight className="w-3.5 h-3.5 text-sage-800 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      </div>
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand */}
         <div className="w-14 h-14 rounded-2xl bg-sage-800 text-cream-100 flex items-center justify-center mx-auto shadow-elevated mb-4">
@@ -158,7 +170,7 @@ export const AuthPage: React.FC = () => {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Aditi Rao"
+                  placeholder="e.g. Alex Morgan or Aditi Rao"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
                 />
               </div>
@@ -174,7 +186,7 @@ export const AuthPage: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="e.g. name@example.com"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
               />
             </div>
@@ -211,7 +223,7 @@ export const AuthPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Demo Explorer Login */}
+          {/* Quick Demo Explorer / Skip Login */}
           <div className="pt-4 border-t border-cream-200">
             <button
               type="button"
@@ -219,7 +231,8 @@ export const AuthPage: React.FC = () => {
               className="w-full py-2.5 px-4 rounded-xl bg-cream-100 hover:bg-cream-200 text-ink-primary text-xs font-semibold border border-ink-border/80 transition flex items-center justify-center gap-2"
             >
               <Sparkles className="w-4 h-4 text-sage-800" />
-              <span>Explore Instant Demo Kitchen (1-Click)</span>
+              <span>Continue as Guest (Skip Login)</span>
+              <ArrowRight className="w-3.5 h-3.5 text-ink-secondary" />
             </button>
           </div>
         </div>

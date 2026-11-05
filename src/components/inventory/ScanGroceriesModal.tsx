@@ -302,7 +302,7 @@ export const ScanGroceriesModal: React.FC<ScanGroceriesModalProps> = ({ isOpen, 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                   <div>
                     <label className="text-[10px] text-ink-secondary block">Qty & Unit</label>
                     <div className="flex items-center gap-1">
@@ -314,13 +314,13 @@ export const ScanGroceriesModal: React.FC<ScanGroceriesModalProps> = ({ isOpen, 
                         onChange={(e) =>
                           handleItemChange(item.id, { quantity: parseFloat(e.target.value) || 1 })
                         }
-                        className="w-14 px-2 py-1 rounded-lg border border-ink-border text-xs bg-white"
+                        className="w-16 px-2 py-1 rounded-lg border border-ink-border text-xs bg-white"
                       />
                       <input
                         type="text"
                         value={item.unit}
                         onChange={(e) => handleItemChange(item.id, { unit: e.target.value })}
-                        className="w-14 px-2 py-1 rounded-lg border border-ink-border text-xs bg-white"
+                        className="w-20 px-2 py-1 rounded-lg border border-ink-border text-xs bg-white"
                       />
                     </div>
                   </div>
