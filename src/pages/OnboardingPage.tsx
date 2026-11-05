@@ -363,16 +363,6 @@ export const OnboardingPage: React.FC = () => {
                 <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-
-              <button
-                onClick={() => {
-                  completeOnboarding({ full_name: fullName, dietary_preference: dietary });
-                  navigate('/');
-                }}
-                className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4 pt-1"
-              >
-                Skip straight to dashboard
-              </button>
             </div>
           </div>
         )}
