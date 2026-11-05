@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Compass, Refrigerator, Sparkles, ShoppingBag, BarChart3, Settings } from 'lucide-react';
+import { Home, Refrigerator, Sparkles, ShoppingBag, BarChart3, Settings } from 'lucide-react';
 import { useKitchen } from '../../context/KitchenContext';
 
 export const BottomNavigation: React.FC = () => {
@@ -8,7 +8,6 @@ export const BottomNavigation: React.FC = () => {
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
-    { to: '/onboarding', label: 'Setup', icon: Compass },
     {
       to: '/kitchen',
       label: 'Kitchen',
@@ -32,7 +31,7 @@ export const BottomNavigation: React.FC = () => {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all ${
+                `relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
                   isActive
                     ? 'text-sage-800 font-semibold'
                     : 'text-ink-secondary hover:text-ink-primary'
@@ -46,16 +45,16 @@ export const BottomNavigation: React.FC = () => {
                       isActive ? 'bg-sage-100 scale-105' : ''
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-5 h-5" />
                     {item.badge !== undefined && (
                       <span
-                        className={`absolute -top-1 -right-1 text-[9px] text-white w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold ${item.badgeColor}`}
+                        className={`absolute -top-1 -right-1 text-[10px] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold ${item.badgeColor}`}
                       >
                         {item.badge}
                       </span>
                     )}
                   </div>
-                  <span className="text-[9px] mt-0.5 tracking-tight">{item.label}</span>
+                  <span className="text-[10px] mt-0.5 tracking-tight">{item.label}</span>
                 </>
               )}
             </NavLink>

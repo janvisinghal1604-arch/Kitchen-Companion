@@ -15,11 +15,7 @@ import {
   Heart,
   Users,
   Flame,
-  ShieldCheck,
-  Plus,
-  Home,
-  Sliders,
-  Layers
+  ShieldCheck
 } from 'lucide-react';
 
 interface QuickStarterIngredient {
@@ -140,7 +136,7 @@ export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { userProfile, completeOnboarding } = useKitchen();
 
-  // Screen-Purpose Mapping from User Specifications:
+  // Natural linear progression:
   // 1. Splash Screen: Introduce the app
   // 2. Onboarding Screens: Introduce key features
   // 3. Personalised screens: Collect optional dietary and meal preferences
@@ -166,11 +162,10 @@ export const OnboardingPage: React.FC = () => {
   const features = [
     {
       title: 'Mindful Kitchen Awareness',
-      headline: 'Know what food you already have.',
+      headline: 'Know what you already have.',
       description:
         'Easily track ingredients across your refrigerator, pantry, and countertop. Never lose produce to the back of the crisper drawer again.',
       icon: Refrigerator,
-      badge: 'Feature 1: Visibility',
       color: 'bg-sage-100 text-sage-800'
     },
     {
@@ -179,7 +174,6 @@ export const OnboardingPage: React.FC = () => {
       description:
         'Prioritize ingredients requiring immediate attention with our transparent "Use First" and "Use Soon" freshness timelines.',
       icon: Clock,
-      badge: 'Feature 2: Prioritization',
       color: 'bg-tomato-100 text-tomato-800'
     },
     {
@@ -188,7 +182,6 @@ export const OnboardingPage: React.FC = () => {
       description:
         'Generate intentional, zero-waste recipes using ingredients you already own. View exact pantry match percentages and chef substitutions.',
       icon: UtensilsCrossed,
-      badge: 'Feature 3: Intentional Cooking',
       color: 'bg-sage-100 text-sage-800'
     },
     {
@@ -197,7 +190,6 @@ export const OnboardingPage: React.FC = () => {
       description:
         'Whenever you add an ingredient to your grocery list, Kitchen Companion checks your active kitchen inventory and alerts you if you already have it.',
       icon: ShoppingBag,
-      badge: 'Feature 4: Smart Shopping',
       color: 'bg-cream-200 text-ink-primary'
     }
   ];
@@ -278,114 +270,82 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  const screens = [
-    { key: 'splash' as const, label: '1. Splash Screen', desc: 'Introduce the app' },
-    { key: 'features' as const, label: '2. Onboarding Screens', desc: 'Introduce key features' },
-    { key: 'personalize' as const, label: '3. Personalised screens', desc: 'Dietary & preferences' },
-    { key: 'setup' as const, label: '4. Kitchen Setup Screen', desc: 'Add ingredients' }
-  ];
-
   return (
-    <div className="min-h-screen bg-cream-100 text-ink-primary flex flex-col justify-between p-4 md:p-8 selection:bg-sage-200">
-      {/* Top Header / Navigable Screen Selector */}
-      <header className="max-w-4xl w-full mx-auto space-y-3 py-2">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-cream-100 text-ink-primary flex flex-col justify-between p-4 sm:p-8 selection:bg-sage-200">
+      {/* Progress navigation (Hidden on Splash screen for clean immersive introduction) */}
+      {currentStep !== 'splash' ? (
+        <div className="max-w-2xl w-full mx-auto flex items-center justify-between py-3">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-sage-800 text-cream-100 flex items-center justify-center shadow-soft">
-              <Clock className="w-5 h-5 text-cream-100" />
+            <div className="w-8 h-8 rounded-xl bg-sage-800 text-cream-100 flex items-center justify-center shadow-soft">
+              <Clock className="w-4 h-4 text-cream-100" />
             </div>
-            <div>
-              <span className="font-editorial text-xl md:text-2xl font-normal text-ink-primary">
-                Kitchen Companion
-              </span>
-              <p className="text-[11px] text-ink-secondary">Onboarding & Setup Flow</p>
-            </div>
+            <span className="font-editorial text-lg font-normal text-ink-primary">
+              Kitchen Companion
+            </span>
           </div>
 
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-cream-200 text-ink-primary border border-ink-border text-xs font-medium transition shadow-xs"
-          >
-            <Home className="w-3.5 h-3.5 text-sage-800" />
-            <span>Dashboard</span>
-          </button>
+          <div className="flex items-center gap-2 text-xs font-medium text-ink-secondary">
+            <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
+            <span>•</span>
+            <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
+            <span>•</span>
+            <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
+          </div>
         </div>
-
-        {/* 4 Explicit Screen Navigation Pills */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-          {screens.map((s) => {
-            const isActive = currentStep === s.key;
-            return (
-              <button
-                key={s.key}
-                onClick={() => setCurrentStep(s.key)}
-                className={`p-2.5 rounded-xl text-left border transition-all ${
-                  isActive
-                    ? 'bg-sage-800 text-white border-sage-800 shadow-soft'
-                    : 'bg-white text-ink-primary border-cream-300 hover:border-sage-300 hover:bg-cream-50'
-                }`}
-              >
-                <span className="font-semibold text-xs block leading-tight">{s.label}</span>
-                <span
-                  className={`text-[10px] block mt-0.5 line-clamp-1 ${
-                    isActive ? 'text-cream-200' : 'text-ink-secondary'
-                  }`}
-                >
-                  {s.desc}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </header>
+      ) : (
+        <div className="py-2" />
+      )}
 
       {/* Main Content Area */}
-      <main className="max-w-3xl w-full mx-auto my-auto py-6">
+      <main className="max-w-2xl w-full mx-auto my-auto py-6">
         {/* ========================================================= */}
         {/* SCREEN 1: SPLASH SCREEN (Introduce the App)               */}
         {/* ========================================================= */}
         {currentStep === 'splash' && (
-          <div className="text-center space-y-6 animate-in fade-in duration-500 max-w-xl mx-auto py-8">
+          <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-lg mx-auto py-12">
             <div className="relative inline-block">
               <div className="w-24 h-24 rounded-3xl bg-sage-800 text-cream-100 flex items-center justify-center mx-auto shadow-elevated">
                 <Clock className="w-12 h-12 text-cream-100" />
               </div>
-              <span className="absolute -bottom-2 -right-2 bg-tomato-500 text-white p-2 rounded-full shadow-soft animate-bounce">
+              <span className="absolute -bottom-2 -right-2 bg-tomato-500 text-white p-2 rounded-full shadow-soft">
                 <Sparkles className="w-4 h-4" />
               </span>
             </div>
 
-            <div>
-              <span className="inline-block px-3 py-1 rounded-full bg-sage-100 text-sage-800 text-xs font-semibold uppercase tracking-wider mb-3 border border-sage-200">
+            <div className="space-y-2">
+              <span className="inline-block px-3 py-1 rounded-full bg-sage-100 text-sage-800 text-xs font-semibold uppercase tracking-wider border border-sage-200">
                 Mindful Kitchen Management
               </span>
               <h1 className="font-editorial text-4xl sm:text-5xl text-ink-primary font-normal leading-tight">
                 Kitchen Companion
               </h1>
-              <p className="font-serif italic text-lg sm:text-xl text-sage-900 mt-2">
+              <p className="font-serif italic text-lg sm:text-xl text-sage-900">
                 "Consume with intention. Waste less."
               </p>
             </div>
 
-            <p className="text-sm md:text-base text-ink-secondary leading-relaxed max-w-md mx-auto">
-              Your intelligent kitchen companion to managing inventory, prioritizing food needing attention,
-              and discovering recipes using what you already own.
+            <p className="text-sm text-ink-secondary leading-relaxed max-w-md mx-auto">
+              Your mindful kitchen companion to manage inventory, prioritize food that needs attention,
+              and discover comforting recipes using food you already own.
             </p>
 
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="pt-4 flex flex-col items-center justify-center gap-3">
               <button
                 onClick={() => setCurrentStep('features')}
                 className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-sage-800 hover:bg-sage-700 text-white font-medium text-sm transition shadow-elevated flex items-center justify-center gap-2 group"
               >
-                <span>Step 2: Introduce Key Features</span>
+                <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
 
               <button
-                onClick={() => setCurrentStep('personalize')}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white hover:bg-cream-200 text-ink-primary font-medium text-xs md:text-sm border border-ink-border/80 transition"
+                onClick={() => {
+                  completeOnboarding({ full_name: fullName, dietary_preference: dietary });
+                  navigate('/');
+                }}
+                className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4 pt-1"
               >
-                Go to Dietary Preferences
+                Skip straight to dashboard
               </button>
             </div>
           </div>
@@ -396,24 +356,12 @@ export const OnboardingPage: React.FC = () => {
         {/* ========================================================= */}
         {currentStep === 'features' && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-cream-300 shadow-card animate-in fade-in duration-300">
-            {/* Feature Slide Display */}
             {(() => {
               const activeFeature = features[featureIndex];
               const Icon = activeFeature.icon;
 
               return (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-semibold px-3 py-1 rounded-full ${activeFeature.color}`}
-                    >
-                      {activeFeature.badge}
-                    </span>
-                    <span className="text-xs text-ink-secondary">
-                      {featureIndex + 1} of {features.length}
-                    </span>
-                  </div>
-
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 py-2">
                     <div className="w-20 h-20 rounded-2xl bg-cream-200 flex items-center justify-center text-sage-800 shrink-0 shadow-soft">
                       <Icon className="w-10 h-10" />
@@ -432,7 +380,7 @@ export const OnboardingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Feature Dots */}
+                  {/* Feature Progress Dots */}
                   <div className="flex justify-center gap-2 pt-2">
                     {features.map((_, i) => (
                       <button
@@ -469,9 +417,7 @@ export const OnboardingPage: React.FC = () => {
                       className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sage-800 hover:bg-sage-700 text-white text-xs sm:text-sm font-medium transition shadow-soft"
                     >
                       <span>
-                        {featureIndex === features.length - 1
-                          ? 'Step 3: Personalize Preferences'
-                          : 'Next Feature'}
+                        {featureIndex === features.length - 1 ? 'Personalize Preferences' : 'Next'}
                       </span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -488,14 +434,11 @@ export const OnboardingPage: React.FC = () => {
         {currentStep === 'personalize' && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-cream-300 shadow-card animate-in fade-in duration-300 space-y-6">
             <div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-sage-100 text-sage-800">
-                Screen 3: Personalised Preferences
-              </span>
-              <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal mt-2">
-                Collect Dietary and Meal Preferences
+              <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal">
+                Your Dietary & Cooking Preferences
               </h2>
               <p className="text-xs sm:text-sm text-ink-secondary mt-1">
-                Kitchen Companion adapts recipe generation and grocery warnings to your household.
+                Kitchen Companion customizes recipe suggestions and grocery alerts to your household.
               </p>
             </div>
 
@@ -558,7 +501,7 @@ export const OnboardingPage: React.FC = () => {
               {/* Favorite Cuisines */}
               <div>
                 <label className="block font-medium text-ink-primary mb-2">
-                  Favorite Cuisines (Select all you enjoy)
+                  Favorite Cuisines
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {cuisineOptions.map((cuisine) => {
@@ -582,7 +525,7 @@ export const OnboardingPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Spice Tolerance & Cooking Level */}
+              {/* Spice Tolerance & Skill Level */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-ink-primary mb-1 flex items-center gap-1.5">
@@ -594,10 +537,10 @@ export const OnboardingPage: React.FC = () => {
                     onChange={(e) => setSpiceTolerance(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400"
                   >
-                    <option value="Mild">Mild (Gentle & comforting)</option>
-                    <option value="Medium">Medium (Balanced heat)</option>
-                    <option value="Spicy">Spicy (Authentic kick)</option>
-                    <option value="Fiery">Fiery (Street-style heat)</option>
+                    <option value="Mild">Mild</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Spicy">Spicy</option>
+                    <option value="Fiery">Fiery</option>
                   </select>
                 </div>
 
@@ -610,9 +553,9 @@ export const OnboardingPage: React.FC = () => {
                     onChange={(e) => setCookingLevel(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400"
                   >
-                    <option value="Beginner">Beginner (Fast 1-pot meals)</option>
-                    <option value="Home Cook">Home Cook (Everyday comfortable)</option>
-                    <option value="Passionate Chef">Passionate Chef (Enjoys experiments)</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Home Cook">Home Cook</option>
+                    <option value="Passionate Chef">Passionate Chef</option>
                   </select>
                 </div>
               </div>
@@ -645,21 +588,21 @@ export const OnboardingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Step Buttons */}
+            {/* Bottom Buttons */}
             <div className="flex items-center justify-between pt-6 border-t border-cream-200">
               <button
                 onClick={() => setCurrentStep('features')}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Features</span>
+                <span>Back</span>
               </button>
 
               <button
                 onClick={() => setCurrentStep('setup')}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sage-800 hover:bg-sage-700 text-white text-xs sm:text-sm font-medium transition shadow-soft"
               >
-                <span>Step 4: Kitchen Setup Screen</span>
+                <span>Continue to Kitchen Setup</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -672,15 +615,11 @@ export const OnboardingPage: React.FC = () => {
         {currentStep === 'setup' && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-cream-300 shadow-card animate-in fade-in duration-300 space-y-6">
             <div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-sage-100 text-sage-800">
-                Screen 4: Kitchen Setup
-              </span>
-              <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal mt-2">
-                Guide Users to Begin Adding Ingredients
+              <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal">
+                What do you currently have in your kitchen?
               </h2>
               <p className="text-xs sm:text-sm text-ink-secondary mt-1">
-                Select the common kitchen staples you currently own. We will populate your initial inventory
-                so you can start cooking immediately.
+                Select common staples you own to populate your initial inventory so you can start cooking immediately.
               </p>
             </div>
 
@@ -721,14 +660,6 @@ export const OnboardingPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="p-4 bg-cream-50 rounded-2xl border border-cream-200 text-xs text-ink-secondary flex items-start gap-2.5">
-              <Sparkles className="w-4 h-4 text-sage-700 shrink-0 mt-0.5" />
-              <p>
-                <strong>Tip:</strong> You can always use the <strong>AI Grocery Scanner</strong> or{' '}
-                <strong>Quick Add</strong> anytime from your dashboard to add more food.
-              </p>
-            </div>
-
             {/* Bottom Actions */}
             <div className="flex items-center justify-between pt-6 border-t border-cream-200">
               <button
@@ -736,7 +667,7 @@ export const OnboardingPage: React.FC = () => {
                 className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Preferences</span>
+                <span>Back</span>
               </button>
 
               <button
@@ -747,8 +678,8 @@ export const OnboardingPage: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-cream-200" />
                 <span>
                   {isFinishing
-                    ? 'Setting Up Kitchen...'
-                    : `Complete & Enter Kitchen (${starterList.filter((i) => i.selected).length} Items)`}
+                    ? 'Preparing Your Kitchen...'
+                    : `Complete Setup & Enter Kitchen (${starterList.filter((i) => i.selected).length} Items)`}
                 </span>
               </button>
             </div>
@@ -757,8 +688,8 @@ export const OnboardingPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-4xl w-full mx-auto text-center py-2 text-xs text-ink-secondary">
-        Kitchen Companion • Mindful food consumption made effortless.
+      <footer className="max-w-2xl w-full mx-auto text-center py-2 text-xs text-ink-secondary">
+        Kitchen Companion • Consume with intention. Waste less.
       </footer>
     </div>
   );

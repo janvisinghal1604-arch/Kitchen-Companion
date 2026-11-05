@@ -9,8 +9,7 @@ import {
   Settings,
   Clock,
   AlertTriangle,
-  Leaf,
-  Compass
+  Leaf
 } from 'lucide-react';
 import { useKitchen } from '../../context/KitchenContext';
 
@@ -23,13 +22,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenScanModal }) => {
 
   const navLinks = [
     { to: '/', label: 'Home Dashboard', icon: Home },
-    {
-      to: '/onboarding',
-      label: 'Onboarding & Setup',
-      icon: Compass,
-      badge: '4 Screens',
-      badgeColor: 'bg-sage-100 text-sage-800 border-sage-200'
-    },
     {
       to: '/kitchen',
       label: 'My Kitchen',

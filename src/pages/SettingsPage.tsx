@@ -1085,7 +1085,7 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
           </div>
 
           {/* Data Backup & Reset */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white rounded-3xl p-6 border border-cream-300 shadow-soft flex flex-col justify-between">
               <div>
                 <h4 className="font-editorial text-lg text-ink-primary font-normal mb-1">
@@ -1123,6 +1123,27 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
               >
                 <RefreshCw className="w-3.5 h-3.5 text-tomato-600" />
                 <span>Reset Kitchen Data</span>
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 border border-cream-300 shadow-soft flex flex-col justify-between">
+              <div>
+                <h4 className="font-editorial text-lg text-ink-primary font-normal mb-1">
+                  Replay Onboarding
+                </h4>
+                <p className="text-xs text-ink-secondary leading-relaxed mb-4">
+                  Experience the initial first-time landing splash, feature tour, and kitchen setup.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('kc_onboarding_completed');
+                  window.location.href = '/';
+                }}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-sage-50 border border-sage-200 hover:bg-sage-100 text-xs font-semibold text-sage-900 transition"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-sage-800" />
+                <span>Re-run Onboarding Flow</span>
               </button>
             </div>
           </div>
