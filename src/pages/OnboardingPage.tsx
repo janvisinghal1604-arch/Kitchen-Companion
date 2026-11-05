@@ -270,11 +270,24 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
+  const handleSkip = async () => {
+    await completeOnboarding({
+      full_name: fullName,
+      dietary_preference: dietary,
+      household_size: Number(householdSize) || 2,
+      cooking_level: cookingLevel,
+      favorite_cuisines: selectedCuisines,
+      allergies: selectedAllergies,
+      spice_tolerance: spiceTolerance
+    });
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-cream-100 text-ink-primary flex flex-col justify-between p-4 sm:p-8 selection:bg-sage-200">
-      {/* Progress navigation (Hidden on Splash screen for clean immersive introduction) */}
-      {currentStep !== 'splash' ? (
-        <div className="max-w-2xl w-full mx-auto flex items-center justify-between py-3">
+      {/* Top Header with Progress and Top-Right Skip Button */}
+      <div className="max-w-2xl w-full mx-auto flex items-center justify-between py-3">
+        {currentStep !== 'splash' ? (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-sage-800 text-cream-100 flex items-center justify-center shadow-soft">
               <Clock className="w-4 h-4 text-cream-100" />
@@ -283,18 +296,31 @@ export const OnboardingPage: React.FC = () => {
               Kitchen Companion
             </span>
           </div>
+        ) : (
+          <div />
+        )}
 
-          <div className="flex items-center gap-2 text-xs font-medium text-ink-secondary">
-            <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
-            <span>•</span>
-            <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
-            <span>•</span>
-            <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
-          </div>
+        <div className="flex items-center gap-3">
+          {currentStep !== 'splash' && (
+            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-ink-secondary mr-2">
+              <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
+              <span>•</span>
+              <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
+              <span>•</span>
+              <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
+            </div>
+          )}
+
+          <button
+            onClick={handleSkip}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-ink-secondary hover:text-ink-primary bg-white/80 hover:bg-white border border-ink-border/60 transition shadow-soft group"
+            title="Skip onboarding and enter kitchen directly"
+          >
+            <span>Skip</span>
+            <ArrowRight className="w-3.5 h-3.5 text-sage-800 group-hover:translate-x-0.5 transition-transform" />
+          </button>
         </div>
-      ) : (
-        <div className="py-2" />
-      )}
+      </div>
 
       {/* Main Content Area */}
       <main className="max-w-2xl w-full mx-auto my-auto py-6">
@@ -662,13 +688,22 @@ export const OnboardingPage: React.FC = () => {
 
             {/* Bottom Actions */}
             <div className="flex items-center justify-between pt-6 border-t border-cream-200">
-              <button
-                onClick={() => setCurrentStep('personalize')}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentStep('personalize')}
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  onClick={handleSkip}
+                  className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4 hidden sm:inline"
+                >
+                  Skip & start with empty kitchen
+                </button>
+              </div>
 
               <button
                 onClick={handleFinishSetup}
