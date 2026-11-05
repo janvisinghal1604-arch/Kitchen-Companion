@@ -10,13 +10,31 @@ import { InsightsPage } from './pages/InsightsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuthPage } from './pages/AuthPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { Clock } from 'lucide-react';
 
 function AppContent() {
-  const { isOnboarded } = useKitchen();
+  const { isOnboarded, isAuthChecking } = useKitchen();
 
-  // If user hasn't completed onboarding, render ONLY the full-screen onboarding flow
-  // (Splash -> Onboarding Features -> Personalized Preferences -> Kitchen Setup).
-  // No App Header, No Sidebar, No Bottom Navigation.
+  // Show a minimal loading screen while checking for an existing Supabase auth session.
+  // This prevents a flash of the onboarding screen for returning authenticated users
+  // whose session is still being verified asynchronously.
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-cream-100 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-sage-800 flex items-center justify-center mx-auto shadow-elevated animate-pulse">
+            <Clock className="w-8 h-8 text-cream-100" />
+          </div>
+          <p className="text-sm text-ink-secondary font-medium">Preparing your kitchen…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user hasn't completed onboarding (first-time visitor or logged-out user),
+  // render ONLY the full-screen onboarding flow:
+  //   Splash → Login/Signup → (auth success → Dashboard) OR (skip → Feature Tour → Prefs → Setup → Dashboard)
+  // No App Header, No Sidebar, No Bottom Navigation during onboarding.
   if (!isOnboarded) {
     return (
       <Routes>
@@ -26,13 +44,13 @@ function AppContent() {
     );
   }
 
-  // Once onboarded, render the complete Kitchen Companion app with AppLayout (Header, Sidebar, BottomNav)
+  // Once onboarded (authenticated or guest-completed), render the full Kitchen Companion app.
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
 
-      {/* Main Application Routes inside AppLayout */}
+      {/* Main Application Routes inside AppLayout (Header, Sidebar, BottomNav) */}
       <Route path="/" element={<AppLayout />}>
         <Route index element={<HomePage />} />
         <Route path="kitchen" element={<MyKitchenPage />} />

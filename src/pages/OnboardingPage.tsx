@@ -369,7 +369,8 @@ export const OnboardingPage: React.FC = () => {
           allergies: selectedAllergies,
           spice_tolerance: spiceTolerance
         },
-        selectedItems
+        selectedItems,
+        true  // Guest users are the only ones who reach this step — auth users go directly to dashboard
       );
 
       navigate('/');
@@ -378,21 +379,12 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  const handleSkip = async () => {
-    await completeOnboarding(
-      {
-        full_name: fullName,
-        dietary_preference: dietary,
-        household_size: Number(householdSize) || 2,
-        cooking_level: cookingLevel,
-        favorite_cuisines: selectedCuisines,
-        allergies: selectedAllergies,
-        spice_tolerance: spiceTolerance
-      },
-      undefined,
-      true
-    );
-    navigate('/');
+  // "Skip for now" on the auth page does NOT complete onboarding immediately.
+  // It enters guest mode and routes through the full onboarding tour first.
+  // Onboarding is only finalized when the user reaches handleFinishSetup.
+  const handleSkip = () => {
+    // Mark this session as a guest-intent so setup screen can persist correctly
+    setCurrentStep('features');
   };
 
   return (
@@ -413,10 +405,9 @@ export const OnboardingPage: React.FC = () => {
         )}
 
         <div className="flex items-center gap-3">
-          {currentStep !== 'splash' && (
+          {/* Progress breadcrumb only shown during the guest onboarding tour steps */}
+          {(currentStep === 'features' || currentStep === 'personalize' || currentStep === 'setup') && (
             <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-ink-secondary mr-2">
-              <span className={currentStep === 'auth' ? 'text-sage-800 font-bold' : ''}>Account</span>
-              <span>•</span>
               <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
               <span>•</span>
               <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>

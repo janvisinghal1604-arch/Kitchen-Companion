@@ -63,6 +63,7 @@ interface KitchenContextType {
   consumptionLogs: ConsumptionLog[];
   userProfile: UserProfile;
   isLoading: boolean;
+  isAuthChecking: boolean;
   toasts: Toast[];
   isOnboarded: boolean;
   isGuest: boolean;
@@ -178,8 +179,82 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return localStorage.getItem('kc_is_guest') === 'true';
   });
 
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // On mount: check for an existing Supabase session.
+  // If a valid session exists AND onboarding was not already marked complete,
+  // mark the user as onboarded so they land directly on the dashboard.
+  // This handles returning authenticated users across browser sessions.
+  useEffect(() => {
+    const checkSession = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsAuthChecking(false);
+        return;
+      }
+      const supabase = getSupabase();
+      if (!supabase) {
+        setIsAuthChecking(false);
+        return;
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          // Authenticated returning user — ensure they bypass onboarding
+          if (localStorage.getItem('kc_onboarding_completed') !== 'true') {
+            localStorage.setItem('kc_onboarding_completed', 'true');
+            localStorage.removeItem('kc_is_guest');
+            setIsGuest(false);
+            setIsOnboarded(true);
+          }
+          // Update profile from session metadata
+          const meta = session.user.user_metadata;
+          if (meta?.full_name || session.user.email) {
+            setUserProfile((prev) => ({
+              ...prev,
+              full_name: meta?.full_name || prev.full_name,
+              email: session.user!.email || prev.email
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('Session check failed:', e);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth state changes (login/logout in other tabs, OAuth callback)
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session && session.user) {
+            // User just signed in (including OAuth callback)
+            if (localStorage.getItem('kc_onboarding_completed') !== 'true') {
+              localStorage.setItem('kc_onboarding_completed', 'true');
+              localStorage.removeItem('kc_is_guest');
+              setIsGuest(false);
+              setIsOnboarded(true);
+            }
+            const meta = session.user.user_metadata;
+            if (meta?.full_name || session.user.email) {
+              setUserProfile((prev) => ({
+                ...prev,
+                full_name: meta?.full_name || prev.full_name,
+                email: session.user!.email || prev.email
+              }));
+            }
+          }
+        });
+        return () => subscription.unsubscribe();
+      }
+    }
+    setIsAuthChecking(false);
+  }, []);
 
   // Sync to localStorage
   useEffect(() => {
@@ -626,6 +701,7 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
         consumptionLogs,
         userProfile,
         isLoading,
+        isAuthChecking,
         toasts,
         isOnboarded,
         isGuest,

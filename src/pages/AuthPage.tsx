@@ -108,14 +108,10 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const handleGuestExplore = async () => {
-    updateUserProfile({
-      full_name: 'Aditi Rao',
-      email: 'aditi.rao@example.com'
-    });
-    showToast('Exploring Kitchen Companion as guest!', 'success');
-    await completeOnboarding({ full_name: 'Aditi Rao', email: 'aditi.rao@example.com' }, undefined, true);
-    navigate('/');
+  const handleGuestExplore = () => {
+    // Skip for now: navigate to the onboarding flow starting at the feature tour
+    // The OnboardingPage reads location state to determine start step
+    navigate('/', { state: { startStep: 'features' } });
   };
 
   return (
