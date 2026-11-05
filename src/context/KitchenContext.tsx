@@ -65,11 +65,14 @@ interface KitchenContextType {
   isLoading: boolean;
   toasts: Toast[];
   isOnboarded: boolean;
+  isGuest: boolean;
   setIsOnboarded: (val: boolean) => void;
   completeOnboarding: (
     prefs: Partial<UserProfile>,
-    initialItems?: Omit<KitchenItem, 'id' | 'freshness_status'>[]
+    initialItems?: Omit<KitchenItem, 'id' | 'freshness_status'>[],
+    isGuest?: boolean
   ) => Promise<void>;
+  signOut: () => Promise<void>;
 
   // Inventory Actions
   addKitchenItem: (item: Omit<KitchenItem, 'id' | 'freshness_status'>) => Promise<KitchenItem>;
@@ -169,6 +172,10 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [isOnboarded, setIsOnboarded] = useState<boolean>(() => {
     return localStorage.getItem('kc_onboarding_completed') === 'true';
+  });
+
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    return localStorage.getItem('kc_is_guest') === 'true';
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -560,15 +567,40 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const completeOnboarding = async (
     prefs: Partial<UserProfile>,
-    initialItems?: Omit<KitchenItem, 'id' | 'freshness_status'>[]
+    initialItems?: Omit<KitchenItem, 'id' | 'freshness_status'>[],
+    isGuestUser: boolean = false
   ) => {
     setUserProfile((prev) => ({ ...prev, ...prefs }));
     if (initialItems && initialItems.length > 0) {
       await addMultipleKitchenItems(initialItems);
     }
     localStorage.setItem('kc_onboarding_completed', 'true');
+    if (isGuestUser) {
+      localStorage.setItem('kc_is_guest', 'true');
+      setIsGuest(true);
+    } else {
+      localStorage.removeItem('kc_is_guest');
+      setIsGuest(false);
+    }
     setIsOnboarded(true);
     showToast('Welcome to Kitchen Companion! Your kitchen is ready.', 'success');
+  };
+
+  const signOut = async () => {
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.warn('Supabase signOut failed:', e);
+        }
+      }
+    }
+    localStorage.setItem('kc_onboarding_completed', 'false');
+    localStorage.removeItem('kc_is_guest');
+    setIsGuest(false);
+    setIsOnboarded(false);
   };
 
   const resetToSampleData = () => {
@@ -596,8 +628,10 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isLoading,
         toasts,
         isOnboarded,
+        isGuest,
         setIsOnboarded,
         completeOnboarding,
+        signOut,
         addKitchenItem,
         addMultipleKitchenItems,
         updateKitchenItem,

@@ -23,6 +23,22 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+// Brand icons (inline SVG to avoid extra dependencies)
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+  </svg>
+);
+
+const AppleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+  </svg>
+);
+
 interface QuickStarterIngredient {
   name: string;
   category: IngredientCategory;
@@ -217,11 +233,37 @@ export const OnboardingPage: React.FC = () => {
         showToast('Signed in successfully (Offline-First Session)', 'info');
       }
 
-      setCurrentStep('features');
+      await completeOnboarding({
+        full_name: authFullName.trim() || fullName,
+        dietary_preference: dietary,
+        household_size: Number(householdSize) || 2,
+        cooking_level: cookingLevel,
+        favorite_cuisines: selectedCuisines,
+        allergies: selectedAllergies,
+        spice_tolerance: spiceTolerance
+      });
+      navigate('/');
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
       setIsAuthLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+    if (!isSupabaseConfigured()) {
+      showToast('OAuth requires Supabase configuration', 'warning');
+      return;
+    }
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: window.location.origin }
+      });
+    } catch (err: any) {
+      showToast(err.message || 'OAuth login failed', 'error');
     }
   };
 
@@ -337,15 +379,19 @@ export const OnboardingPage: React.FC = () => {
   };
 
   const handleSkip = async () => {
-    await completeOnboarding({
-      full_name: fullName,
-      dietary_preference: dietary,
-      household_size: Number(householdSize) || 2,
-      cooking_level: cookingLevel,
-      favorite_cuisines: selectedCuisines,
-      allergies: selectedAllergies,
-      spice_tolerance: spiceTolerance
-    });
+    await completeOnboarding(
+      {
+        full_name: fullName,
+        dietary_preference: dietary,
+        household_size: Number(householdSize) || 2,
+        cooking_level: cookingLevel,
+        favorite_cuisines: selectedCuisines,
+        allergies: selectedAllergies,
+        spice_tolerance: spiceTolerance
+      },
+      undefined,
+      true
+    );
     navigate('/');
   };
 
@@ -378,15 +424,6 @@ export const OnboardingPage: React.FC = () => {
               <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
             </div>
           )}
-
-          <button
-            onClick={handleSkip}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-ink-secondary hover:text-ink-primary bg-white/80 hover:bg-white border border-ink-border/60 transition shadow-soft group"
-            title="Skip onboarding and enter kitchen directly"
-          >
-            <span>Skip</span>
-            <ArrowRight className="w-3.5 h-3.5 text-sage-800 group-hover:translate-x-0.5 transition-transform" />
-          </button>
         </div>
       </div>
 
@@ -431,13 +468,6 @@ export const OnboardingPage: React.FC = () => {
                 <span>Get Started</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-
-              <button
-                onClick={() => setCurrentStep('features')}
-                className="text-xs text-ink-secondary hover:text-ink-primary font-medium underline underline-offset-4"
-              >
-                Continue without account (Skip Login)
-              </button>
             </div>
           </div>
         )}
@@ -448,17 +478,39 @@ export const OnboardingPage: React.FC = () => {
         {currentStep === 'auth' && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-cream-300 shadow-card animate-in fade-in duration-300 space-y-6 max-w-lg mx-auto">
             <div className="text-center space-y-2">
-              <span className="inline-block px-3 py-1 rounded-full bg-sage-100 text-sage-800 text-xs font-semibold uppercase tracking-wider">
-                Cloud Sync (Optional)
-              </span>
               <h2 className="font-editorial text-2xl sm:text-3xl text-ink-primary font-normal">
                 {authMode === 'login' ? 'Welcome Back' : 'Create Your Kitchen Account'}
               </h2>
               <p className="text-xs sm:text-sm text-ink-secondary">
                 {authMode === 'login'
                   ? 'Sign in to access your kitchen inventory and recipes across all devices.'
-                  : 'Sync your inventory securely to Supabase. You can also skip and stay offline.'}
+                  : 'Create an account to sync your kitchen across devices.'}
               </p>
+            </div>
+
+            {/* OAuth Buttons */}
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleOAuthLogin('google')}
+                className="w-full py-2.5 px-4 rounded-xl border border-ink-border hover:bg-cream-50 text-sm font-medium text-ink-primary transition flex items-center justify-center gap-2.5 shadow-soft"
+              >
+                <GoogleIcon />
+                <span>Continue with Google</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOAuthLogin('apple')}
+                className="w-full py-2.5 px-4 rounded-xl border border-ink-border hover:bg-cream-50 text-sm font-medium text-ink-primary transition flex items-center justify-center gap-2.5 shadow-soft"
+              >
+                <AppleIcon />
+                <span>Continue with Apple</span>
+              </button>
+              <div className="flex items-center gap-2 my-1">
+                <div className="flex-1 h-px bg-cream-200" />
+                <span className="text-xs text-ink-secondary">or</span>
+                <div className="flex-1 h-px bg-cream-200" />
+              </div>
             </div>
 
             {/* Mode Switcher Tabs */}
@@ -555,7 +607,7 @@ export const OnboardingPage: React.FC = () => {
                 className="w-full py-3 rounded-xl bg-sage-800 hover:bg-sage-700 text-white font-medium text-sm transition shadow-soft flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isAuthLoading ? (
-                  <span>Connecting to Supabase...</span>
+                  <span>Connecting...</span>
                 ) : (
                   <>
                     <span>{authMode === 'login' ? 'Sign In to Kitchen' : 'Create Free Account'}</span>
@@ -565,18 +617,14 @@ export const OnboardingPage: React.FC = () => {
               </button>
             </form>
 
-            <div className="pt-2 border-t border-cream-200 text-center space-y-2">
+            <div className="pt-2 border-t border-cream-200 text-center">
               <button
                 type="button"
-                onClick={() => setCurrentStep('features')}
-                className="w-full py-2.5 px-4 rounded-xl border border-ink-border hover:bg-cream-100 text-xs sm:text-sm font-medium text-ink-primary transition flex items-center justify-center gap-2"
+                onClick={handleSkip}
+                className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4 transition"
               >
-                <span>Continue without account (Skip)</span>
-                <ArrowRight className="w-4 h-4 text-ink-secondary" />
+                Skip for now
               </button>
-              <p className="text-[11px] text-ink-secondary">
-                You can link your Supabase account anytime in Profile & Settings.
-              </p>
             </div>
           </div>
         )}

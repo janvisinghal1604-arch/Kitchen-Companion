@@ -3,6 +3,7 @@ import { Modal } from '../common/Modal';
 import { KitchenItem, IngredientCategory, StorageLocation } from '../../types';
 import { useKitchen } from '../../context/KitchenContext';
 import { Sparkles, Calendar, Layers, MapPin } from 'lucide-react';
+import { IngredientAutocomplete } from './IngredientAutocomplete';
 
 interface IngredientFormModalProps {
   isOpen: boolean;
@@ -163,13 +164,10 @@ export const IngredientFormModal: React.FC<IngredientFormModalProps> = ({
           <label className="block font-medium text-ink-primary mb-1">
             Ingredient Name <span className="text-tomato-500">*</span>
           </label>
-          <input
-            type="text"
-            required
+          <IngredientAutocomplete
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(val) => setName(val)}
             placeholder="e.g. Ripe Tomatoes, Paneer, Coriander..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
           />
         </div>
 

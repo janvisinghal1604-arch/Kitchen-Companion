@@ -51,7 +51,8 @@ export const SettingsPage: React.FC = () => {
     resetToSampleData,
     inventory,
     consumptionLogs,
-    showToast
+    showToast,
+    signOut
   } = useKitchen();
 
   // Active Screen/Tab:
@@ -391,7 +392,10 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
             </div>
 
             <button
-              onClick={() => navigate('/auth')}
+              onClick={async () => {
+                await signOut();
+                navigate('/');
+              }}
               className="flex items-center gap-1.5 text-xs text-tomato-600 hover:text-tomato-700 bg-tomato-50 hover:bg-tomato-100 px-3 py-1.5 rounded-xl border border-tomato-200 transition"
             >
               <LogOut className="w-3.5 h-3.5" />
