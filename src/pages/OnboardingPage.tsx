@@ -379,12 +379,27 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  // "Skip for now" on the auth page does NOT complete onboarding immediately.
-  // It enters guest mode and routes through the full onboarding tour first.
-  // Onboarding is only finalized when the user reaches handleFinishSetup.
+  // "Skip for now" on the auth page routes into the onboarding tour
   const handleSkip = () => {
-    // Mark this session as a guest-intent so setup screen can persist correctly
     setCurrentStep('features');
+  };
+
+  // Skip button during onboarding and setup — completes guest setup and enters dashboard directly
+  const handleSkipToDashboard = async () => {
+    await completeOnboarding(
+      {
+        full_name: fullName || 'Mindful Explorer',
+        dietary_preference: dietary,
+        household_size: Number(householdSize) || 2,
+        cooking_level: cookingLevel,
+        favorite_cuisines: selectedCuisines,
+        allergies: selectedAllergies,
+        spice_tolerance: spiceTolerance
+      },
+      undefined,
+      true
+    );
+    navigate('/');
   };
 
   return (
@@ -405,15 +420,26 @@ export const OnboardingPage: React.FC = () => {
         )}
 
         <div className="flex items-center gap-3">
-          {/* Progress breadcrumb only shown during the guest onboarding tour steps */}
+          {/* Progress breadcrumb and Skip button shown during the guest onboarding tour and setup steps */}
           {(currentStep === 'features' || currentStep === 'personalize' || currentStep === 'setup') && (
-            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-ink-secondary mr-2">
-              <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
-              <span>•</span>
-              <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
-              <span>•</span>
-              <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
-            </div>
+            <>
+              <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-ink-secondary mr-2">
+                <span className={currentStep === 'features' ? 'text-sage-800 font-bold' : ''}>Tour</span>
+                <span>•</span>
+                <span className={currentStep === 'personalize' ? 'text-sage-800 font-bold' : ''}>Preferences</span>
+                <span>•</span>
+                <span className={currentStep === 'setup' ? 'text-sage-800 font-bold' : ''}>Kitchen</span>
+              </div>
+
+              <button
+                onClick={handleSkipToDashboard}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-ink-secondary hover:text-ink-primary bg-white/80 hover:bg-white border border-ink-border/60 transition shadow-soft group"
+                title="Skip to kitchen dashboard"
+              >
+                <span>Skip</span>
+                <ArrowRight className="w-3.5 h-3.5 text-sage-800 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -664,16 +690,25 @@ export const OnboardingPage: React.FC = () => {
 
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between pt-6 border-t border-cream-200">
-                    <button
-                      onClick={() => {
-                        if (featureIndex > 0) setFeatureIndex(featureIndex - 1);
-                        else setCurrentStep('auth');
-                      }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary hover:bg-cream-100 transition"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Back</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          if (featureIndex > 0) setFeatureIndex(featureIndex - 1);
+                          else setCurrentStep('auth');
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary hover:bg-cream-100 transition"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back</span>
+                      </button>
+
+                      <button
+                        onClick={handleSkipToDashboard}
+                        className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4"
+                      >
+                        Skip tour
+                      </button>
+                    </div>
 
                     <button
                       onClick={() => {
@@ -859,13 +894,22 @@ export const OnboardingPage: React.FC = () => {
 
             {/* Bottom Buttons */}
             <div className="flex items-center justify-between pt-6 border-t border-cream-200">
-              <button
-                onClick={() => setCurrentStep('features')}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentStep('features')}
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium text-ink-secondary hover:text-ink-primary transition"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  onClick={handleSkipToDashboard}
+                  className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4"
+                >
+                  Skip to kitchen
+                </button>
+              </div>
 
               <button
                 onClick={() => setCurrentStep('setup')}
@@ -941,8 +985,8 @@ export const OnboardingPage: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={handleSkip}
-                  className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4 hidden sm:inline"
+                  onClick={handleSkipToDashboard}
+                  className="text-xs text-ink-secondary hover:text-ink-primary underline underline-offset-4"
                 >
                   Skip & start with empty kitchen
                 </button>
