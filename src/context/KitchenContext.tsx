@@ -39,20 +39,20 @@ const DEFAULT_NOTIFICATIONS: NotificationSettings = {
 };
 
 const DEFAULT_PROFILE: UserProfile = {
-  id: 'u1',
-  full_name: 'Aditi Rao',
-  email: 'aditi.rao@example.com',
-  phone: '+91 98765 43210',
-  city: 'Bengaluru, India',
-  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+  id: 'guest',
+  full_name: '',
+  email: '',
+  phone: '',
+  city: '',
+  avatar_url: '',
   dietary_preference: 'Vegetarian',
   household_size: 2,
   cooking_level: 'Home Cook',
-  allergies: ['Peanuts'],
+  allergies: [],
   favorite_cuisines: ['South Indian', 'North Indian', 'Indo-Chinese'],
   spice_tolerance: 'Medium',
-  staples: ['Curd / Plain Dahi', 'Tomatoes', 'Paneer', 'Coriander'],
-  meal_goals: ['Reduce produce waste', 'Cook 5 nights a week', 'Save money on groceries'],
+  staples: [],
+  meal_goals: ['Reduce produce waste', 'Save money on groceries'],
   notification_settings: DEFAULT_NOTIFICATIONS
 };
 
@@ -133,7 +133,8 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Failed to parse inventory from localStorage', e);
       }
     }
-    return INITIAL_KITCHEN_ITEMS;
+    // New visitor begins with zero items in their kitchen
+    return [];
   });
 
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -143,12 +144,12 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>(() => {
     const saved = localStorage.getItem('etc_groceries');
-    return saved ? JSON.parse(saved) : INITIAL_GROCERY_ITEMS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [consumptionLogs, setConsumptionLogs] = useState<ConsumptionLog[]>(() => {
     const saved = localStorage.getItem('etc_consumption_logs');
-    return saved ? JSON.parse(saved) : INITIAL_CONSUMPTION_LOGS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
@@ -156,6 +157,11 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // Purge old preset demo names like "Aditi Rao"
+        if (parsed.full_name === 'Aditi Rao' || parsed.email === 'aditi.rao@example.com') {
+          parsed.full_name = '';
+          parsed.email = '';
+        }
         return {
           ...DEFAULT_PROFILE,
           ...parsed,
@@ -290,7 +296,7 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Sync with Supabase on mount if configured
+  // Sync with Supabase on mount ONLY for authenticated users
   useEffect(() => {
     const syncFromSupabase = async () => {
       if (!isSupabaseConfigured()) return;
@@ -298,13 +304,19 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!supabase) return;
 
       try {
+        // Only authenticated users sync from Supabase — guest users maintain independent local storage
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || !session.user) {
+          return;
+        }
+
         setIsLoading(true);
         const { data: invData, error: invErr } = await supabase
           .from('kitchen_inventory')
           .select('*')
           .order('estimated_use_by', { ascending: true });
 
-        if (!invErr && invData && invData.length > 0) {
+        if (!invErr && invData) {
           setInventory(
             invData.map((item: any) => ({
               ...item,
@@ -318,7 +330,7 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!grocErr && grocData && grocData.length > 0) {
+        if (!grocErr && grocData) {
           setGroceryItems(grocData);
         }
 
@@ -327,7 +339,7 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .select('*')
           .order('action_date', { ascending: false });
 
-        if (!logErr && logData && logData.length > 0) {
+        if (!logErr && logData) {
           setConsumptionLogs(logData);
         }
       } catch (err) {
@@ -647,8 +659,20 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
   ) => {
     setUserProfile((prev) => ({ ...prev, ...prefs }));
     if (initialItems && initialItems.length > 0) {
-      await addMultipleKitchenItems(initialItems);
+      const newItems: KitchenItem[] = initialItems.map((item, idx) => ({
+        ...item,
+        id: `item-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+        freshness_status: determineFreshnessStatus(item.estimated_use_by),
+        created_at: new Date().toISOString()
+      }));
+      setInventory(newItems);
+      localStorage.setItem('etc_inventory', JSON.stringify(newItems));
+    } else {
+      // If user skipped setup or didn't add items, inventory is strictly 0 items
+      setInventory([]);
+      localStorage.setItem('etc_inventory', JSON.stringify([]));
     }
+
     localStorage.setItem('kc_onboarding_completed', 'true');
     if (isGuestUser) {
       localStorage.setItem('kc_is_guest', 'true');
@@ -674,6 +698,12 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     localStorage.setItem('kc_onboarding_completed', 'false');
     localStorage.removeItem('kc_is_guest');
+    localStorage.removeItem('etc_user_profile');
+    localStorage.removeItem('etc_inventory');
+    localStorage.removeItem('etc_groceries');
+    setUserProfile(DEFAULT_PROFILE);
+    setInventory([]);
+    setGroceryItems([]);
     setIsGuest(false);
     setIsOnboarded(false);
   };

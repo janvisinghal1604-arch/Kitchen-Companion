@@ -59,7 +59,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Countertop',
     daysFresh: 3,
     imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Red Onions',
@@ -69,7 +69,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Pantry',
     daysFresh: 14,
     imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Curd / Plain Dahi',
@@ -79,7 +79,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Refrigerator',
     daysFresh: 4,
     imageUrl: 'https://images.unsplash.com/photo-1571212515416-fef01fc43637?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Fresh Palak (Spinach)',
@@ -89,7 +89,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Refrigerator',
     daysFresh: 2,
     imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Malai Paneer',
@@ -119,7 +119,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Refrigerator',
     daysFresh: 20,
     imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Basmati Rice',
@@ -129,7 +129,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Pantry',
     daysFresh: 90,
     imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   },
   {
     name: 'Shimla Apples',
@@ -149,7 +149,7 @@ const STARTER_INGREDIENTS: QuickStarterIngredient[] = [
     storage: 'Refrigerator',
     daysFresh: 3,
     imageUrl: 'https://images.unsplash.com/photo-1589135233689-d56d7870f43b?w=200&auto=format&fit=crop&q=80',
-    selected: true
+    selected: false
   }
 ];
 
@@ -361,7 +361,7 @@ export const OnboardingPage: React.FC = () => {
 
       await completeOnboarding(
         {
-          full_name: fullName,
+          full_name: fullName.trim(),
           dietary_preference: dietary,
           household_size: Number(householdSize) || 2,
           cooking_level: cookingLevel,
@@ -384,11 +384,11 @@ export const OnboardingPage: React.FC = () => {
     setCurrentStep('features');
   };
 
-  // Skip button during onboarding and setup — completes guest setup and enters dashboard directly
+  // Skip button during onboarding and setup — completes guest setup with zero items and enters dashboard directly
   const handleSkipToDashboard = async () => {
     await completeOnboarding(
       {
-        full_name: fullName || 'Mindful Explorer',
+        full_name: fullName.trim(),
         dietary_preference: dietary,
         household_size: Number(householdSize) || 2,
         cooking_level: cookingLevel,
@@ -396,7 +396,7 @@ export const OnboardingPage: React.FC = () => {
         allergies: selectedAllergies,
         spice_tolerance: spiceTolerance
       },
-      undefined,
+      [], // Explicitly zero products
       true
     );
     navigate('/');
@@ -581,7 +581,7 @@ export const OnboardingPage: React.FC = () => {
                     required
                     value={authFullName}
                     onChange={(e) => setAuthFullName(e.target.value)}
-                    placeholder="e.g. Alex Morgan or Aditi Rao"
+                    placeholder="e.g. Alex Morgan"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400 text-sm"
                   />
                 </div>
@@ -755,7 +755,7 @@ export const OnboardingPage: React.FC = () => {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Aditi Rao"
+                    placeholder="Enter your name (optional)"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:outline-none focus:ring-2 focus:ring-sage-400"
                   />
                 </div>

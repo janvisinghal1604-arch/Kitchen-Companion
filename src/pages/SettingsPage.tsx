@@ -448,7 +448,7 @@ CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USI
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Alex Morgan or Aditi Rao"
+                  placeholder="e.g. Alex Morgan"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-ink-border bg-cream-50 focus:ring-2 focus:ring-sage-400 focus:outline-none"
                 />
               </div>

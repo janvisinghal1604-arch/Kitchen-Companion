@@ -90,7 +90,9 @@ export const HomePage: React.FC = () => {
               <span>{formattedDate}</span>
             </div>
             <h2 className="font-editorial text-3xl md:text-4xl text-ink-primary font-normal leading-tight">
-              {getGreeting()}, {userProfile.full_name.split(' ')[0]}!
+              {userProfile.full_name?.trim()
+                ? `${getGreeting()}, ${userProfile.full_name.trim().split(' ')[0]}!`
+                : `${getGreeting()}!`}
             </h2>
             <p className="text-sm md:text-base text-ink-secondary mt-2 leading-relaxed">
               Let's make the most of what you have. Instead of buying more groceries, your kitchen is
