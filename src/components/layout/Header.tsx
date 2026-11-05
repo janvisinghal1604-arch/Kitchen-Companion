@@ -1,6 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useKitchen } from '../../context/KitchenContext';
-import { Clock, Plus, Sparkles, AlertTriangle } from 'lucide-react';
+import { Clock, Plus, Sparkles, AlertTriangle, Compass } from 'lucide-react';
 
 interface HeaderProps {
   onOpenAddModal: () => void;
@@ -8,6 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenAddModal, onOpenScanModal }) => {
+  const navigate = useNavigate();
   const { stats } = useKitchen();
 
   const formattedDate = new Date().toLocaleDateString('en-IN', {
@@ -57,6 +59,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddModal, onOpenScanModal 
 
         {/* Quick Actions */}
         <div className="flex items-center gap-2">
+          {/* Onboarding & Setup direct button */}
+          <button
+            onClick={() => navigate('/onboarding')}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-semibold rounded-xl bg-sage-100 hover:bg-sage-200 text-sage-900 border border-sage-300 transition shadow-soft"
+            title="Open Onboarding & Setup walkthrough"
+          >
+            <Compass className="w-4 h-4 text-sage-800" />
+            <span className="hidden sm:inline">Onboarding & Setup</span>
+            <span className="sm:hidden">Setup</span>
+          </button>
+
           <button
             onClick={onOpenScanModal}
             className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium rounded-xl bg-cream-200/80 hover:bg-cream-300 text-ink-primary border border-ink-border/60 transition shadow-soft"
