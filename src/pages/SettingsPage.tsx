@@ -222,25 +222,56 @@ export const SettingsPage: React.FC = () => {
     showToast('Kitchen inventory and profile exported successfully!', 'success');
   };
 
-  const completeSchemaSql = `-- KITCHEN COMPANION - SUPABASE POSTGRESQL SCHEMA
+  const completeSchemaSql = `-- ====================================================================
+-- KITCHEN COMPANION - SUPABASE POSTGRESQL SCHEMA & USER ANALYTICS
+-- ====================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- 1. PROFILES (Tracks every user, login count, verification status)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name TEXT,
   email TEXT,
+  full_name TEXT,
+  avatar_url TEXT,
+  phone TEXT,
+  city TEXT,
   dietary_preference TEXT DEFAULT 'Vegetarian',
   household_size INT DEFAULT 2,
+  cooking_level TEXT DEFAULT 'Home Cook',
+  favorite_cuisines JSONB DEFAULT '["South Indian", "North Indian", "Indo-Chinese"]'::jsonb,
+  allergies JSONB DEFAULT '[]'::jsonb,
+  spice_tolerance TEXT DEFAULT 'Medium',
+  notification_settings JSONB DEFAULT '{"daily_reminder_enabled": true, "dinner_nudge_enabled": true, "expiry_alerts_enabled": true}'::jsonb,
+  email_verified BOOLEAN DEFAULT FALSE,
+  email_confirmed_at TIMESTAMPTZ,
+  last_sign_in_at TIMESTAMPTZ,
+  sign_in_count INT DEFAULT 1,
+  auth_provider TEXT DEFAULT 'email',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 2. INGREDIENT CATALOG (Master catalog of staples)
+CREATE TABLE IF NOT EXISTS public.ingredient_catalog (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  category TEXT NOT NULL,
+  default_unit TEXT NOT NULL DEFAULT 'pcs',
+  default_storage TEXT NOT NULL DEFAULT 'Refrigerator',
+  shelf_life_days INT NOT NULL DEFAULT 7,
+  image_url TEXT,
+  is_staple BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. KITCHEN INVENTORY (User active inventory)
 CREATE TABLE IF NOT EXISTS public.kitchen_inventory (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  ingredient_id UUID REFERENCES public.ingredient_catalog(id) ON DELETE SET NULL,
   custom_name TEXT NOT NULL,
   quantity NUMERIC NOT NULL DEFAULT 1,
-  unit TEXT NOT NULL DEFAULT 'units',
+  unit TEXT NOT NULL DEFAULT 'pcs',
   category TEXT NOT NULL,
   storage_location TEXT NOT NULL DEFAULT 'Refrigerator',
   purchase_date DATE DEFAULT CURRENT_DATE,
@@ -252,24 +283,39 @@ CREATE TABLE IF NOT EXISTS public.kitchen_inventory (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS public.grocery_items (
+-- 4. GROCERY LISTS
+CREATE TABLE IF NOT EXISTS public.grocery_lists (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  ingredient_name TEXT NOT NULL,
-  quantity NUMERIC NOT NULL DEFAULT 1,
-  unit TEXT NOT NULL DEFAULT 'units',
-  category TEXT NOT NULL DEFAULT 'Vegetables',
-  is_purchased BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'My Weekly Groceries',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 5. GROCERY ITEMS
+CREATE TABLE IF NOT EXISTS public.grocery_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  grocery_list_id UUID REFERENCES public.grocery_lists(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  ingredient_name TEXT NOT NULL,
+  quantity NUMERIC NOT NULL DEFAULT 1,
+  unit TEXT NOT NULL DEFAULT 'pcs',
+  category TEXT NOT NULL DEFAULT 'Vegetables',
+  is_purchased BOOLEAN NOT NULL DEFAULT FALSE,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. CONSUMPTION LOGS
 CREATE TABLE IF NOT EXISTS public.consumption_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
   inventory_item_id UUID,
   ingredient_name TEXT NOT NULL,
   quantity NUMERIC NOT NULL DEFAULT 1,
-  unit TEXT NOT NULL DEFAULT 'units',
+  unit TEXT NOT NULL DEFAULT 'pcs',
   category TEXT DEFAULT 'Vegetables',
   action_type TEXT NOT NULL CHECK (action_type IN ('consumed', 'discarded', 'donated')),
   estimated_value NUMERIC DEFAULT 0,
@@ -278,13 +324,67 @@ CREATE TABLE IF NOT EXISTS public.consumption_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 7. ROW LEVEL SECURITY (RLS)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ingredient_catalog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kitchen_inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.grocery_lists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.grocery_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.consumption_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can manage own inventory" ON public.kitchen_inventory FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
-CREATE POLICY "Users can manage own grocery items" ON public.grocery_items FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
-CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
+CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Anyone can read ingredient catalog" ON public.ingredient_catalog FOR SELECT USING (true);
+CREATE POLICY "Users can manage own inventory" ON public.kitchen_inventory FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage own grocery lists" ON public.grocery_lists FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage own grocery items" ON public.grocery_items FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage own logs" ON public.consumption_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 8. TRIGGER TO AUTO-SYNC SIGNUPS, LOGINS, AND VERIFICATIONS
+CREATE OR REPLACE FUNCTION public.handle_auth_user_event()
+RETURNS TRIGGER AS $$
+DECLARE
+    detected_provider TEXT;
+    extracted_name TEXT;
+    extracted_avatar TEXT;
+BEGIN
+    detected_provider := COALESCE(NEW.raw_app_meta_data->>'provider', NEW.raw_user_meta_data->>'provider', 'email');
+    extracted_name := COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', '');
+    extracted_avatar := COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '');
+
+    INSERT INTO public.profiles (id, email, full_name, avatar_url, email_verified, email_confirmed_at, last_sign_in_at, sign_in_count, auth_provider, created_at, updated_at)
+    VALUES (NEW.id, NEW.email, extracted_name, extracted_avatar, (NEW.email_confirmed_at IS NOT NULL), NEW.email_confirmed_at, NEW.last_sign_in_at, 1, detected_provider, NOW(), NOW())
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = CASE WHEN EXCLUDED.full_name <> '' THEN EXCLUDED.full_name ELSE profiles.full_name END,
+        avatar_url = CASE WHEN EXCLUDED.avatar_url <> '' THEN EXCLUDED.avatar_url ELSE profiles.avatar_url END,
+        email_verified = (NEW.email_confirmed_at IS NOT NULL),
+        email_confirmed_at = NEW.email_confirmed_at,
+        last_sign_in_at = COALESCE(NEW.last_sign_in_at, profiles.last_sign_in_at),
+        sign_in_count = CASE WHEN NEW.last_sign_in_at IS DISTINCT FROM OLD.last_sign_in_at THEN profiles.sign_in_count + 1 ELSE profiles.sign_in_count END,
+        auth_provider = detected_provider,
+        updated_at = NOW();
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_event ON auth.users;
+CREATE TRIGGER on_auth_user_event AFTER INSERT OR UPDATE OF last_sign_in_at, email_confirmed_at ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_auth_user_event();
+
+-- 9. USER ANALYTICS SUMMARY VIEW
+CREATE OR REPLACE VIEW public.admin_user_analytics AS
+SELECT
+    COUNT(*) AS total_registered_users,
+    COUNT(*) FILTER (WHERE email_verified = TRUE) AS total_verified_accounts,
+    COUNT(*) FILTER (WHERE email_verified = FALSE) AS total_unverified_accounts,
+    COUNT(*) FILTER (WHERE last_sign_in_at >= NOW() - INTERVAL '24 hours') AS active_users_past_24h,
+    COUNT(*) FILTER (WHERE last_sign_in_at >= NOW() - INTERVAL '7 days') AS active_users_past_7d,
+    COUNT(*) FILTER (WHERE last_sign_in_at >= NOW() - INTERVAL '30 days') AS active_users_past_30d,
+    COUNT(*) FILTER (WHERE auth_provider = 'google') AS google_signups,
+    COUNT(*) FILTER (WHERE auth_provider = 'apple') AS apple_signups,
+    COUNT(*) FILTER (WHERE auth_provider = 'email') AS email_signups,
+    COALESCE(SUM(sign_in_count), 0) AS total_logins_recorded
+FROM public.profiles;
 `;
 
   const handleCopySchema = () => {

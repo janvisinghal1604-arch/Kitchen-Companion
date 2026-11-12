@@ -223,11 +223,55 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
               email: session.user!.email || prev.email
             }));
           }
+
+          // Migrate any local guest items into Supabase account
+          migrateGuestDataToSupabase(session.user.id);
         }
       } catch (e) {
         console.warn('Session check failed:', e);
       } finally {
         setIsAuthChecking(false);
+      }
+    };
+
+    const migrateGuestDataToSupabase = async (userId: string) => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+
+      try {
+        const savedInv = localStorage.getItem('etc_inventory');
+        if (savedInv) {
+          const localItems: KitchenItem[] = JSON.parse(savedInv);
+          if (localItems.length > 0) {
+            const { data: existing } = await supabase
+              .from('kitchen_inventory')
+              .select('custom_name')
+              .eq('user_id', userId);
+
+            const existingNames = new Set((existing || []).map((e: any) => e.custom_name.toLowerCase()));
+            const toInsert = localItems
+              .filter((i) => !existingNames.has(i.custom_name.toLowerCase()))
+              .map((i) => ({
+                user_id: userId,
+                custom_name: i.custom_name,
+                quantity: i.quantity,
+                unit: i.unit,
+                category: i.category,
+                storage_location: i.storage_location,
+                purchase_date: i.purchase_date,
+                estimated_use_by: i.estimated_use_by,
+                freshness_status: i.freshness_status,
+                notes: i.notes,
+                image_url: i.image_url
+              }));
+
+            if (toInsert.length > 0) {
+              await supabase.from('kitchen_inventory').insert(toInsert);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Guest inventory migration skipped:', err);
       }
     };
 
@@ -254,6 +298,7 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 email: session.user!.email || prev.email
               }));
             }
+            migrateGuestDataToSupabase(session.user.id);
           }
         });
         return () => subscription.unsubscribe();
@@ -311,12 +356,40 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         setIsLoading(true);
+
+        // 1. Sync User Profile from Supabase profiles table
+        const { data: profData, error: profErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (!profErr && profData) {
+          setUserProfile((prev) => ({
+            ...prev,
+            id: profData.id,
+            full_name: profData.full_name || prev.full_name,
+            email: profData.email || session.user.email || prev.email,
+            phone: profData.phone || prev.phone,
+            city: profData.city || prev.city,
+            avatar_url: profData.avatar_url || prev.avatar_url,
+            dietary_preference: profData.dietary_preference || prev.dietary_preference,
+            household_size: profData.household_size || prev.household_size,
+            cooking_level: profData.cooking_level || prev.cooking_level,
+            favorite_cuisines: profData.favorite_cuisines || prev.favorite_cuisines,
+            allergies: profData.allergies || prev.allergies,
+            spice_tolerance: profData.spice_tolerance || prev.spice_tolerance
+          }));
+        }
+
+        // 2. Sync Kitchen Inventory
         const { data: invData, error: invErr } = await supabase
           .from('kitchen_inventory')
           .select('*')
+          .eq('user_id', session.user.id)
           .order('estimated_use_by', { ascending: true });
 
-        if (!invErr && invData) {
+        if (!invErr && invData && invData.length > 0) {
           setInventory(
             invData.map((item: any) => ({
               ...item,
@@ -325,21 +398,25 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
           );
         }
 
+        // 3. Sync Grocery Items
         const { data: grocData, error: grocErr } = await supabase
           .from('grocery_items')
           .select('*')
+          .eq('user_id', session.user.id)
           .order('created_at', { ascending: false });
 
-        if (!grocErr && grocData) {
+        if (!grocErr && grocData && grocData.length > 0) {
           setGroceryItems(grocData);
         }
 
+        // 4. Sync Consumption Logs
         const { data: logData, error: logErr } = await supabase
           .from('consumption_logs')
           .select('*')
+          .eq('user_id', session.user.id)
           .order('action_date', { ascending: false });
 
-        if (!logErr && logData) {
+        if (!logErr && logData && logData.length > 0) {
           setConsumptionLogs(logData);
         }
       } catch (err) {
@@ -380,27 +457,31 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setInventory((prev) => [newItem, ...prev]);
     showToast(`Added ${newItem.custom_name} to your kitchen`, 'success');
 
-    // Supabase push if configured
+    // Supabase push if authenticated
     if (isSupabaseConfigured()) {
       const supabase = getSupabase();
       if (supabase) {
         try {
-          await supabase.from('kitchen_inventory').insert([
-            {
-              custom_name: newItem.custom_name,
-              quantity: newItem.quantity,
-              unit: newItem.unit,
-              category: newItem.category,
-              storage_location: newItem.storage_location,
-              purchase_date: newItem.purchase_date,
-              estimated_use_by: newItem.estimated_use_by,
-              freshness_status: newItem.freshness_status,
-              notes: newItem.notes,
-              image_url: newItem.image_url
-            }
-          ]);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await supabase.from('kitchen_inventory').insert([
+              {
+                user_id: session.user.id,
+                custom_name: newItem.custom_name,
+                quantity: newItem.quantity,
+                unit: newItem.unit,
+                category: newItem.category,
+                storage_location: newItem.storage_location,
+                purchase_date: newItem.purchase_date,
+                estimated_use_by: newItem.estimated_use_by,
+                freshness_status: newItem.freshness_status,
+                notes: newItem.notes,
+                image_url: newItem.image_url
+              }
+            ]);
+          }
         } catch (e) {
-          console.warn('Supabase insert failed:', e);
+          console.warn('Supabase kitchen inventory insert failed:', e);
         }
       }
     }
@@ -494,10 +575,46 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (remainingQty <= 0) {
       setInventory((prev) => prev.filter((i) => i.id !== id));
+      if (isSupabaseConfigured()) {
+        const supabase = getSupabase();
+        supabase?.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            supabase.from('kitchen_inventory').delete().eq('id', id).then();
+          }
+        });
+      }
     } else {
       setInventory((prev) =>
         prev.map((i) => (i.id === id ? { ...i, quantity: remainingQty } : i))
       );
+      if (isSupabaseConfigured()) {
+        const supabase = getSupabase();
+        supabase?.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            supabase.from('kitchen_inventory').update({ quantity: remainingQty }).eq('id', id).then();
+          }
+        });
+      }
+    }
+
+    // Sync consumption log to Supabase
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('consumption_logs').insert([{
+            user_id: session.user.id,
+            ingredient_name: newLog.ingredient_name,
+            quantity: newLog.quantity,
+            unit: newLog.unit,
+            category: newLog.category,
+            action_type: newLog.action_type,
+            estimated_value: newLog.estimated_value,
+            action_date: newLog.action_date,
+            notes: newLog.notes
+          }]).then();
+        }
+      });
     }
 
     showToast(`Delicious! Marked ${item.custom_name} as consumed.`, 'success');
@@ -523,6 +640,28 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setConsumptionLogs((prev) => [newLog, ...prev]);
     setInventory((prev) => prev.filter((i) => i.id !== id));
+
+    // Sync discard log and removal to Supabase
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('kitchen_inventory').delete().eq('id', id).then();
+          supabase.from('consumption_logs').insert([{
+            user_id: session.user.id,
+            ingredient_name: newLog.ingredient_name,
+            quantity: newLog.quantity,
+            unit: newLog.unit,
+            category: newLog.category,
+            action_type: newLog.action_type,
+            estimated_value: newLog.estimated_value,
+            action_date: newLog.action_date,
+            notes: newLog.notes
+          }]).then();
+        }
+      });
+    }
+
     showToast(`Logged discarded item for learning and reflection.`, 'info');
   };
 
@@ -560,23 +699,70 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setGroceryItems((prev) => [newItem, ...prev]);
     showToast(`Added ${newItem.ingredient_name} to grocery list`, 'success');
+
+    // Supabase push if authenticated
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('grocery_items').insert([{
+            user_id: session.user.id,
+            ingredient_name: newItem.ingredient_name,
+            quantity: newItem.quantity,
+            unit: newItem.unit,
+            category: newItem.category,
+            is_purchased: newItem.is_purchased
+          }]).then();
+        }
+      });
+    }
   };
 
   const updateGroceryItem = async (id: string, updates: Partial<GroceryItem>) => {
     setGroceryItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('grocery_items').update(updates).eq('id', id).then();
+        }
+      });
+    }
   };
 
   const deleteGroceryItem = async (id: string) => {
+    const target = groceryItems.find((g) => g.id === id);
     setGroceryItems((prev) => prev.filter((item) => item.id !== id));
     showToast('Grocery item removed', 'info');
+
+    if (isSupabaseConfigured() && target) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('grocery_items').delete().eq('id', id).then();
+        }
+      });
+    }
   };
 
   const toggleGroceryPurchased = async (id: string) => {
+    const target = groceryItems.find((g) => g.id === id);
+    const updatedStatus = target ? !target.is_purchased : true;
     setGroceryItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, is_purchased: !item.is_purchased } : item
       )
     );
+
+    if (isSupabaseConfigured() && target) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase.from('grocery_items').update({ is_purchased: updatedStatus }).eq('id', id).then();
+        }
+      });
+    }
   };
 
   const movePurchasedToInventory = async (item: GroceryItem, shelfLifeDays: number = 7) => {
@@ -650,6 +836,36 @@ export const KitchenProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateUserProfile = (updates: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...updates }));
     showToast('Profile updated', 'success');
+
+    // Supabase push if authenticated
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabase();
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase
+            .from('profiles')
+            .upsert({
+              id: session.user.id,
+              email: updates.email || session.user.email,
+              full_name: updates.full_name,
+              phone: updates.phone,
+              city: updates.city,
+              avatar_url: updates.avatar_url,
+              dietary_preference: updates.dietary_preference,
+              household_size: updates.household_size,
+              cooking_level: updates.cooking_level,
+              favorite_cuisines: updates.favorite_cuisines,
+              allergies: updates.allergies,
+              spice_tolerance: updates.spice_tolerance,
+              notification_settings: updates.notification_settings,
+              updated_at: new Date().toISOString()
+            })
+            .then(({ error }) => {
+              if (error) console.warn('Supabase profile sync notice:', error.message);
+            });
+        }
+      });
+    }
   };
 
   const completeOnboarding = async (
