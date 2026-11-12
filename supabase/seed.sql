@@ -20,7 +20,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ====================================================================
--- 0. SCHEMA COMPATIBILITY UPGRADE (Ensures all columns exist if tables were created earlier)
+-- 0. SCHEMA COMPATIBILITY UPGRADE (Ensures all tables & columns exist)
 -- ====================================================================
 -- Ensure ingredient_catalog exists
 CREATE TABLE IF NOT EXISTS public.ingredient_catalog (
@@ -33,6 +33,55 @@ CREATE TABLE IF NOT EXISTS public.ingredient_catalog (
     image_url TEXT,
     is_staple BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure grocery_lists exists
+CREATE TABLE IF NOT EXISTS public.grocery_lists (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT 'My Weekly Groceries',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure grocery_items exists
+CREATE TABLE IF NOT EXISTS public.grocery_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    grocery_list_id UUID REFERENCES public.grocery_lists(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+    ingredient_name TEXT NOT NULL,
+    quantity NUMERIC NOT NULL DEFAULT 1,
+    unit TEXT NOT NULL DEFAULT 'pcs',
+    category TEXT NOT NULL DEFAULT 'Vegetables',
+    is_purchased BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure recipes and recipe_ingredients exist
+CREATE TABLE IF NOT EXISTS public.recipes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    cuisine TEXT DEFAULT 'Indian',
+    preparation_time INT NOT NULL DEFAULT 20,
+    servings INT NOT NULL DEFAULT 2,
+    image_url TEXT,
+    instructions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.recipe_ingredients (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_id UUID NOT NULL REFERENCES public.recipes(id) ON DELETE CASCADE,
+    ingredient_name TEXT NOT NULL,
+    quantity NUMERIC NOT NULL DEFAULT 1,
+    unit TEXT NOT NULL DEFAULT 'pcs',
+    is_available BOOLEAN DEFAULT TRUE,
+    is_optional BOOLEAN DEFAULT FALSE
 );
 
 -- Upgrade kitchen_inventory if it already existed without all columns
@@ -63,10 +112,30 @@ ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS last_sign_in_at T
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS sign_in_count INT DEFAULT 1;
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
 
+-- Upgrade grocery_lists if it already existed without all columns
+ALTER TABLE IF EXISTS public.grocery_lists ADD COLUMN IF NOT EXISTS name TEXT DEFAULT 'My Weekly Groceries';
+ALTER TABLE IF EXISTS public.grocery_lists ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
 -- Upgrade grocery_items if it already existed without all columns
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS grocery_list_id UUID;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS ingredient_name TEXT;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 1;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'pcs';
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
 ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS is_purchased BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+
+-- Upgrade consumption_logs if it already existed without all columns
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS inventory_item_id UUID;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS ingredient_name TEXT;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 1;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'pcs';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS action_type TEXT DEFAULT 'consumed';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS estimated_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS action_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ====================================================================
 -- 1. SEED AUTH USERS (Satisfies foreign key constraint for all child tables)
@@ -744,6 +813,12 @@ END $$;
 -- ====================================================================
 -- 5. SEED GROCERY LISTS & ITEMS
 -- ====================================================================
+DELETE FROM public.grocery_items
+WHERE user_id IN (
+    'a0000000-0000-0000-0000-000000000001'::uuid,
+    'a0000000-0000-0000-0000-000000000002'::uuid
+);
+
 DELETE FROM public.grocery_lists
 WHERE user_id IN (
     'a0000000-0000-0000-0000-000000000001'::uuid,

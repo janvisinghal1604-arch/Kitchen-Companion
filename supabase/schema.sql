@@ -193,9 +193,30 @@ ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS last_sign_in_at T
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS sign_in_count INT DEFAULT 1;
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
 
+-- Upgrade grocery_lists if it already existed without all columns
+ALTER TABLE IF EXISTS public.grocery_lists ADD COLUMN IF NOT EXISTS name TEXT DEFAULT 'My Weekly Groceries';
+ALTER TABLE IF EXISTS public.grocery_lists ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+-- Upgrade grocery_items if it already existed without all columns
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS grocery_list_id UUID;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS ingredient_name TEXT;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 1;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'pcs';
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
 ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS is_purchased BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+
+-- Upgrade consumption_logs if it already existed without all columns
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS inventory_item_id UUID;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS ingredient_name TEXT;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 1;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'pcs';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS action_type TEXT DEFAULT 'consumed';
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS estimated_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS action_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.consumption_logs ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ====================================================================
 -- 8. INDEXES FOR HIGH-PERFORMANCE QUERIES
