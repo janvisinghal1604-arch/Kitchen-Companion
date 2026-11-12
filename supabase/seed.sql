@@ -20,6 +20,55 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ====================================================================
+-- 0. SCHEMA COMPATIBILITY UPGRADE (Ensures all columns exist if tables were created earlier)
+-- ====================================================================
+-- Ensure ingredient_catalog exists
+CREATE TABLE IF NOT EXISTS public.ingredient_catalog (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    default_unit TEXT NOT NULL DEFAULT 'pcs',
+    default_storage TEXT NOT NULL DEFAULT 'Refrigerator',
+    shelf_life_days INT NOT NULL DEFAULT 7,
+    image_url TEXT,
+    is_staple BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Upgrade kitchen_inventory if it already existed without all columns
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS ingredient_id UUID;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS storage_location TEXT DEFAULT 'Refrigerator';
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS purchase_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS estimated_use_by DATE;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS freshness_status TEXT DEFAULT 'Fresh';
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Upgrade profiles if it already existed without all columns
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS dietary_preference TEXT DEFAULT 'Vegetarian';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS household_size INT DEFAULT 2;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS cooking_level TEXT DEFAULT 'Home Cook';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS favorite_cuisines JSONB DEFAULT '["South Indian", "North Indian", "Indo-Chinese"]'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS allergies JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS spice_tolerance TEXT DEFAULT 'Medium';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS notification_settings JSONB DEFAULT '{"daily_reminder_enabled": true, "dinner_nudge_enabled": true, "expiry_alerts_enabled": true}'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS last_sign_in_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS sign_in_count INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
+
+-- Upgrade grocery_items if it already existed without all columns
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS is_purchased BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+
+-- ====================================================================
 -- 1. SEED AUTH USERS (Satisfies foreign key constraint for all child tables)
 -- ====================================================================
 -- Fixed demo user UUIDs for consistent relationship mapping
@@ -677,10 +726,20 @@ INSERT INTO public.kitchen_inventory (
 );
 
 -- Associate ingredient_id from catalog where exact name matches
-UPDATE public.kitchen_inventory ki
-SET ingredient_id = ic.id
-FROM public.ingredient_catalog ic
-WHERE ki.custom_name = ic.name;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = 'kitchen_inventory' 
+          AND column_name = 'ingredient_id'
+    ) THEN
+        UPDATE public.kitchen_inventory ki
+        SET ingredient_id = ic.id
+        FROM public.ingredient_catalog ic
+        WHERE ki.custom_name = ic.name;
+    END IF;
+END $$;
 
 -- ====================================================================
 -- 5. SEED GROCERY LISTS & ITEMS

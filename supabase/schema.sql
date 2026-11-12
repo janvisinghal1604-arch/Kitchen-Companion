@@ -165,6 +165,39 @@ CREATE TABLE IF NOT EXISTS public.recipe_ingredients (
 );
 
 -- ====================================================================
+-- SCHEMA MIGRATION / UPGRADE: Ensure columns exist on pre-existing tables
+-- ====================================================================
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS ingredient_id UUID;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS storage_location TEXT DEFAULT 'Refrigerator';
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS purchase_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS estimated_use_by DATE;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS freshness_status TEXT DEFAULT 'Fresh';
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.kitchen_inventory ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS dietary_preference TEXT DEFAULT 'Vegetarian';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS household_size INT DEFAULT 2;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS cooking_level TEXT DEFAULT 'Home Cook';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS favorite_cuisines JSONB DEFAULT '["South Indian", "North Indian", "Indo-Chinese"]'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS allergies JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS spice_tolerance TEXT DEFAULT 'Medium';
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS notification_settings JSONB DEFAULT '{"daily_reminder_enabled": true, "dinner_nudge_enabled": true, "expiry_alerts_enabled": true}'::jsonb;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS last_sign_in_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS sign_in_count INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'email';
+
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS is_purchased BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.grocery_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Vegetables';
+
+-- ====================================================================
 -- 8. INDEXES FOR HIGH-PERFORMANCE QUERIES
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
