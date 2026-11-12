@@ -111,6 +111,7 @@ export const SettingsPage: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(getGeminiApiKey());
   const [copiedSchema, setCopiedSchema] = useState(false);
+  const [copiedSeed, setCopiedSeed] = useState(false);
 
   // Handlers for User Profile
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -392,6 +393,66 @@ FROM public.profiles;
     setCopiedSchema(true);
     showToast('Schema SQL copied to clipboard!', 'success');
     setTimeout(() => setCopiedSchema(false), 2500);
+  };
+
+  const seedSql = `-- ====================================================================
+-- KITCHEN COMPANION - SEED DATA FOR ALL TABLES (Quick Run)
+-- See complete dataset in supabase/seed.sql
+-- ====================================================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 1. Create Demo Users in auth.users
+INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+VALUES
+  ('00000000-0000-0000-0000-000000000000'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'authenticated', 'authenticated', 'priya.sharma@eattheclock.demo', crypt('Demo2025!', gen_salt('bf')), NOW() - INTERVAL '20 days', NOW() - INTERVAL '2 hours', '{"provider":"google"}'::jsonb, '{"name":"Priya Sharma","full_name":"Priya Sharma"}'::jsonb, NOW() - INTERVAL '30 days', NOW()),
+  ('00000000-0000-0000-0000-000000000000'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid, 'authenticated', 'authenticated', 'rahul.mehta@eattheclock.demo', crypt('Demo2025!', gen_salt('bf')), NOW() - INTERVAL '10 days', NOW() - INTERVAL '1 day', '{"provider":"email"}'::jsonb, '{"name":"Rahul Mehta","full_name":"Rahul Mehta"}'::jsonb, NOW() - INTERVAL '15 days', NOW()),
+  ('00000000-0000-0000-0000-000000000003'::uuid, 'a0000000-0000-0000-0000-000000000003'::uuid, 'authenticated', 'authenticated', 'kabir.sen@eattheclock.demo', crypt('Demo2025!', gen_salt('bf')), NULL, NOW() - INTERVAL '4 hours', '{"provider":"email"}'::jsonb, '{"name":"Kabir Sen","full_name":"Kabir Sen"}'::jsonb, NOW() - INTERVAL '4 hours', NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Populate Profiles with culinary preferences and verification metrics
+INSERT INTO public.profiles (id, email, full_name, phone, city, dietary_preference, household_size, cooking_level, favorite_cuisines, allergies, spice_tolerance, email_verified, email_confirmed_at, last_sign_in_at, sign_in_count, auth_provider)
+VALUES
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'priya.sharma@eattheclock.demo', 'Priya Sharma', '+91 98201 44321', 'Mumbai', 'Vegetarian', 3, 'Passionate Home Cook', '["North Indian", "South Indian"]'::jsonb, '["Peanuts"]'::jsonb, 'Medium', TRUE, NOW() - INTERVAL '20 days', NOW() - INTERVAL '2 hours', 14, 'google'),
+  ('a0000000-0000-0000-0000-000000000002'::uuid, 'rahul.mehta@eattheclock.demo', 'Rahul Mehta', '+91 99870 12345', 'Bengaluru', 'Eggetarian', 2, 'Beginner Cook', '["Indo-Chinese", "Continental"]'::jsonb, '[]'::jsonb, 'High', TRUE, NOW() - INTERVAL '10 days', NOW() - INTERVAL '1 day', 8, 'email'),
+  ('a0000000-0000-0000-0000-000000000003'::uuid, 'kabir.sen@eattheclock.demo', 'Kabir Sen', '+91 98110 55432', 'New Delhi', 'Non-Vegetarian', 1, 'Quick Meals', '["Mughlai", "Street Food"]'::jsonb, '[]'::jsonb, 'Very High', FALSE, NULL, NOW() - INTERVAL '4 hours', 1, 'email')
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, sign_in_count = EXCLUDED.sign_in_count, email_verified = EXCLUDED.email_verified;
+
+-- 3. Populate Kitchen Inventory (Use First, Use Soon, Fresh)
+INSERT INTO public.kitchen_inventory (user_id, custom_name, quantity, unit, category, storage_location, estimated_use_by, freshness_status, notes)
+VALUES
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Fresh Palak (Spinach)', 250, 'g', 'Vegetables', 'Refrigerator', CURRENT_DATE + 1, 'Use First', 'Organic batch for Palak Paneer'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Malai Paneer', 200, 'g', 'Dairy', 'Refrigerator', CURRENT_DATE + 1, 'Use First', 'Unopened fresh packet'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Ripe Hybrid Tomatoes', 4, 'pcs', 'Vegetables', 'Countertop', CURRENT_DATE + 1, 'Use First', 'Softening - ideal for puree'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Fresh Milk', 1, 'L', 'Dairy', 'Refrigerator', CURRENT_DATE + 3, 'Use Soon', 'Pouch in dairy chiller'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Curd / Plain Dahi', 400, 'g', 'Dairy', 'Refrigerator', CURRENT_DATE + 4, 'Use Soon', 'For raita & parathas'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Daawat Basmati Rice', 5, 'kg', 'Grains', 'Pantry', CURRENT_DATE + 160, 'Fresh', 'Aged long-grain basmati'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Toor Dal', 1, 'kg', 'Pulses', 'Pantry', CURRENT_DATE + 150, 'Fresh', 'Organic staple pantry dal');
+
+-- 4. Grocery Lists & Items
+INSERT INTO public.grocery_lists (id, user_id, name, is_active)
+VALUES ('b0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'Weekly Family Essentials', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.grocery_items (grocery_list_id, user_id, ingredient_name, quantity, unit, category, is_purchased)
+VALUES
+  ('b0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'Cherry Tomatoes', 250, 'g', 'Vegetables', true),
+  ('b0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'Fresh Coriander', 2, 'bunch', 'Vegetables', false),
+  ('b0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'Sourdough Bread', 1, 'pack', 'Bakery', false);
+
+-- 5. Consumption Logs (Saved vs Discarded tracking)
+INSERT INTO public.consumption_logs (user_id, ingredient_name, quantity, unit, category, action_type, estimated_value, action_date, notes)
+VALUES
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Fresh Palak', 250, 'g', 'Vegetables', 'consumed', 40.00, CURRENT_DATE - 3, 'Rescued in Dal Palak'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Malai Paneer', 200, 'g', 'Dairy', 'consumed', 95.00, CURRENT_DATE - 2, 'Cooked into Paneer Bhurji'),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'Whole Wheat Bread', 100, 'g', 'Bakery', 'discarded', 18.00, CURRENT_DATE - 5, 'Forgot on countertop');
+`;
+
+  const handleCopySeed = () => {
+    navigator.clipboard.writeText(seedSql);
+    setCopiedSeed(true);
+    showToast('Seed Data SQL copied to clipboard!', 'success');
+    setTimeout(() => setCopiedSeed(false), 2500);
   };
 
   const tabs = [
@@ -1128,8 +1189,41 @@ FROM public.profiles;
                   )}
                 </button>
               </div>
-              <pre className="p-3 bg-cream-100 rounded-xl text-[11px] font-mono text-ink-secondary overflow-x-auto max-h-36 border border-cream-200">
+              <pre className="p-3 bg-cream-100 rounded-xl text-[11px] font-mono text-ink-secondary overflow-x-auto max-h-32 border border-cream-200">
                 {completeSchemaSql}
+              </pre>
+            </div>
+
+            {/* Dummy Seed Data helper */}
+            <div className="pt-4 border-t border-cream-200">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <span className="text-xs font-semibold text-ink-primary block">
+                    Dummy Seed Data (All Tables)
+                  </span>
+                  <span className="text-[10px] text-ink-tertiary">
+                    Populates profiles, ingredient catalog, kitchen inventory, grocery lists, logs & recipes
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopySeed}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-sage-100 hover:bg-sage-200 text-sage-900 text-xs font-medium transition"
+                >
+                  {copiedSeed ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-sage-700" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Seed Data SQL</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="p-3 bg-cream-100 rounded-xl text-[11px] font-mono text-ink-secondary overflow-x-auto max-h-32 border border-cream-200">
+                {seedSql}
               </pre>
             </div>
           </div>
